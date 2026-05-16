@@ -13,7 +13,7 @@ echo "▶ Installing relay-control …"
 
 # ── 1. System packages ──────────────────────────────────────
 apt-get update -qq
-apt-get install -y python3 python3-venv python3-pip
+apt-get install -y python3 python3-venv python3-pip rsync sudo
 
 # ── 2. Application files ────────────────────────────────────
 install -d "$APP_DIR"
