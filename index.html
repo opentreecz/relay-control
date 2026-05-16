@@ -1,0 +1,639 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Relay Control</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Barlow:wght@300;400;600;700&display=swap" rel="stylesheet" />
+  <style>
+    /* ── Design tokens ──────────────────────────────────────── */
+    :root {
+      --bg:        #0b0e14;
+      --surface:   #131720;
+      --border:    #1e2535;
+      --accent:    #00e5a0;
+      --warn:      #ff4d6d;
+      --muted:     #3a4155;
+      --text:      #c9d1e0;
+      --text-dim:  #5a6480;
+      --mono:      'Share Tech Mono', monospace;
+      --sans:      'Barlow', sans-serif;
+      --radius:    6px;
+      --glow:      0 0 24px rgba(0,229,160,.18);
+      --glow-warn: 0 0 24px rgba(255,77,109,.25);
+    }
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: var(--sans);
+      font-weight: 300;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* ── Scanline overlay ───────────────────────────────────── */
+    body::after {
+      content: '';
+      position: fixed; inset: 0; pointer-events: none; z-index: 9999;
+      background: repeating-linear-gradient(
+        0deg,
+        transparent,
+        transparent 2px,
+        rgba(0,0,0,.06) 2px,
+        rgba(0,0,0,.06) 4px
+      );
+    }
+
+    /* ── Header ─────────────────────────────────────────────── */
+    header {
+      padding: 1.25rem 2rem;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+      background: var(--surface);
+    }
+
+    .logo {
+      width: 36px; height: 36px;
+      border: 2px solid var(--accent);
+      border-radius: 50%;
+      display: grid; place-items: center;
+      box-shadow: var(--glow);
+      flex-shrink: 0;
+    }
+    .logo svg { fill: var(--accent); }
+
+    header h1 {
+      font-family: var(--mono);
+      font-size: 1rem;
+      letter-spacing: .18em;
+      text-transform: uppercase;
+      color: var(--accent);
+    }
+    header .sub {
+      margin-left: auto;
+      font-family: var(--mono);
+      font-size: .72rem;
+      color: var(--text-dim);
+      letter-spacing: .12em;
+    }
+
+    /* ── Main grid ──────────────────────────────────────────── */
+    main {
+      flex: 1;
+      padding: 2rem;
+      display: grid;
+      grid-template-columns: 340px 1fr;
+      grid-template-rows: auto 1fr;
+      gap: 1.5rem;
+      max-width: 1200px;
+      width: 100%;
+      margin: 0 auto;
+    }
+
+    /* ── Cards ──────────────────────────────────────────────── */
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 1.5rem;
+    }
+    .card-title {
+      font-family: var(--mono);
+      font-size: .7rem;
+      letter-spacing: .2em;
+      text-transform: uppercase;
+      color: var(--text-dim);
+      margin-bottom: 1.25rem;
+    }
+
+    /* ── Status panel ───────────────────────────────────────── */
+    .status-panel {
+      grid-column: 1;
+      grid-row: 1 / 3;
+      display: flex;
+      flex-direction: column;
+      gap: 1.5rem;
+    }
+
+    /* Relay status orb */
+    .orb-wrap {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 1rem;
+      padding: 2rem 0;
+    }
+    .orb {
+      width: 100px; height: 100px;
+      border-radius: 50%;
+      position: relative;
+      transition: all .4s ease;
+    }
+    .orb.on {
+      background: radial-gradient(circle at 35% 35%, #5fffc4, #00b377);
+      box-shadow: 0 0 0 12px rgba(0,229,160,.08), 0 0 40px rgba(0,229,160,.45);
+      animation: pulse-on 2.4s ease-in-out infinite;
+    }
+    .orb.off {
+      background: radial-gradient(circle at 35% 35%, #ff8fa3, #c0002a);
+      box-shadow: 0 0 0 12px rgba(255,77,109,.08), 0 0 40px rgba(255,77,109,.4);
+      animation: pulse-off 2.4s ease-in-out infinite;
+    }
+    .orb.pulse {
+      background: radial-gradient(circle at 35% 35%, #ffe066, #e0a000);
+      box-shadow: 0 0 0 12px rgba(255,200,0,.1), 0 0 40px rgba(255,200,0,.5);
+      animation: pulse-warn 1s ease-in-out infinite;
+    }
+    @keyframes pulse-on {
+      0%,100% { box-shadow: 0 0 0 12px rgba(0,229,160,.08), 0 0 40px rgba(0,229,160,.45); }
+      50%      { box-shadow: 0 0 0 20px rgba(0,229,160,.04), 0 0 60px rgba(0,229,160,.6); }
+    }
+    @keyframes pulse-off {
+      0%,100% { box-shadow: 0 0 0 12px rgba(255,77,109,.08), 0 0 40px rgba(255,77,109,.4); }
+      50%      { box-shadow: 0 0 0 20px rgba(255,77,109,.04), 0 0 60px rgba(255,77,109,.55); }
+    }
+    @keyframes pulse-warn {
+      0%,100% { box-shadow: 0 0 0 10px rgba(255,200,0,.1), 0 0 30px rgba(255,200,0,.4); }
+      50%      { box-shadow: 0 0 0 22px rgba(255,200,0,.06), 0 0 70px rgba(255,200,0,.65); }
+    }
+
+    .orb-label {
+      font-family: var(--mono);
+      font-size: 1.4rem;
+      letter-spacing: .2em;
+      font-weight: 700;
+    }
+    .orb-label.on  { color: var(--accent); }
+    .orb-label.off { color: var(--warn); }
+    .orb-label.pulse { color: #ffd60a; }
+
+    .orb-sub {
+      font-size: .78rem;
+      color: var(--text-dim);
+      letter-spacing: .1em;
+      font-family: var(--mono);
+    }
+
+    /* Metadata rows */
+    .meta-row {
+      display: flex;
+      justify-content: space-between;
+      font-size: .8rem;
+      padding: .45rem 0;
+      border-bottom: 1px solid var(--border);
+    }
+    .meta-row:last-child { border-bottom: none; }
+    .meta-key { color: var(--text-dim); font-family: var(--mono); letter-spacing: .08em; }
+    .meta-val { font-family: var(--mono); color: var(--text); }
+
+    /* ── Trigger button ─────────────────────────────────────── */
+    .btn-trigger {
+      width: 100%;
+      padding: 1rem;
+      background: transparent;
+      border: 1.5px solid var(--accent);
+      border-radius: var(--radius);
+      color: var(--accent);
+      font-family: var(--mono);
+      font-size: .85rem;
+      letter-spacing: .18em;
+      text-transform: uppercase;
+      cursor: pointer;
+      transition: all .2s ease;
+      position: relative;
+      overflow: hidden;
+    }
+    .btn-trigger::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: var(--accent);
+      transform: scaleX(0);
+      transform-origin: left;
+      transition: transform .25s ease;
+      z-index: 0;
+    }
+    .btn-trigger:hover::before { transform: scaleX(1); }
+    .btn-trigger:hover { color: var(--bg); }
+    .btn-trigger span { position: relative; z-index: 1; }
+    .btn-trigger:disabled {
+      border-color: var(--muted);
+      color: var(--muted);
+      cursor: not-allowed;
+    }
+    .btn-trigger:disabled::before { display: none; }
+
+    .countdown {
+      font-family: var(--mono);
+      font-size: .75rem;
+      color: #ffd60a;
+      text-align: center;
+      min-height: 1.2em;
+      letter-spacing: .1em;
+      margin-top: .5rem;
+    }
+
+    /* ── Events panel ───────────────────────────────────────── */
+    .events-panel {
+      grid-column: 2;
+      grid-row: 1 / 3;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .events-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 1.25rem;
+    }
+    .btn-dl {
+      background: transparent;
+      border: 1px solid var(--muted);
+      border-radius: var(--radius);
+      color: var(--text-dim);
+      font-family: var(--mono);
+      font-size: .68rem;
+      letter-spacing: .12em;
+      padding: .35rem .75rem;
+      cursor: pointer;
+      text-decoration: none;
+      text-transform: uppercase;
+      transition: all .2s;
+    }
+    .btn-dl:hover { border-color: var(--accent); color: var(--accent); }
+
+    .events-table-wrap {
+      flex: 1;
+      overflow-y: auto;
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-family: var(--mono);
+      font-size: .75rem;
+    }
+    thead th {
+      background: #0f1318;
+      color: var(--text-dim);
+      font-weight: 400;
+      letter-spacing: .12em;
+      text-transform: uppercase;
+      padding: .65rem 1rem;
+      text-align: left;
+      position: sticky; top: 0;
+      border-bottom: 1px solid var(--border);
+    }
+    tbody tr {
+      border-bottom: 1px solid var(--border);
+      transition: background .15s;
+    }
+    tbody tr:hover { background: rgba(255,255,255,.02); }
+    tbody td {
+      padding: .55rem 1rem;
+      color: var(--text);
+    }
+    .badge {
+      display: inline-block;
+      padding: .15rem .55rem;
+      border-radius: 3px;
+      font-size: .68rem;
+      font-weight: 600;
+      letter-spacing: .1em;
+    }
+    .badge-on  { background: rgba(0,229,160,.12); color: #00e5a0; }
+    .badge-off { background: rgba(255,77,109,.12); color: #ff4d6d; }
+    .badge-event { background: rgba(255,214,10,.1); color: #ffd60a; }
+    .ts { color: var(--text-dim); font-size: .7rem; }
+
+    /* ── Footer ─────────────────────────────────────────────── */
+    footer {
+      padding: .75rem 2rem;
+      border-top: 1px solid var(--border);
+      background: var(--surface);
+      font-family: var(--mono);
+      font-size: .68rem;
+      color: var(--text-dim);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    #clock { color: var(--accent); }
+
+    /* ── Toast ──────────────────────────────────────────────── */
+    #toast {
+      position: fixed;
+      bottom: 2rem; right: 2rem;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: .9rem 1.4rem;
+      font-family: var(--mono);
+      font-size: .8rem;
+      color: var(--text);
+      transform: translateY(120%);
+      opacity: 0;
+      transition: all .3s ease;
+      z-index: 100;
+      max-width: 320px;
+    }
+    #toast.show { transform: translateY(0); opacity: 1; }
+    #toast.ok   { border-color: var(--accent); color: var(--accent); }
+    #toast.err  { border-color: var(--warn);   color: var(--warn); }
+
+    @media (max-width: 900px) {
+      main { grid-template-columns: 1fr; grid-template-rows: auto; }
+      .status-panel { grid-column: 1; grid-row: auto; }
+      .events-panel { grid-column: 1; grid-row: auto; min-height: 400px; }
+    }
+  </style>
+</head>
+<body>
+
+<header>
+  <div class="logo">
+    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24">
+      <path d="M13 3v7h7l-9 11v-7H4z"/>
+    </svg>
+  </div>
+  <h1>Relay Control</h1>
+  <span class="sub" id="health-badge">● connecting…</span>
+</header>
+
+<main>
+  <!-- ── Left: status + controls ── -->
+  <aside class="status-panel">
+
+    <div class="card">
+      <div class="card-title">Relay Status</div>
+      <div class="orb-wrap">
+        <div class="orb" id="orb"></div>
+        <div class="orb-label" id="orb-label">…</div>
+        <div class="orb-sub" id="orb-sub">Fetching state…</div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">Pin Info</div>
+      <div class="meta-row">
+        <span class="meta-key">BCM PIN</span>
+        <span class="meta-val">GPIO 17</span>
+      </div>
+      <div class="meta-row">
+        <span class="meta-key">Physical</span>
+        <span class="meta-val">Pin 11</span>
+      </div>
+      <div class="meta-row">
+        <span class="meta-key">Voltage</span>
+        <span class="meta-val">3.3 V</span>
+      </div>
+      <div class="meta-row">
+        <span class="meta-key">Pulse OFF</span>
+        <span class="meta-val">{{ deactivate_secs }} s</span>
+      </div>
+      <div class="meta-row">
+        <span class="meta-key">On Pi</span>
+        <span class="meta-val" id="on-pi">…</span>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">Control</div>
+      <button class="btn-trigger" id="btn-trigger" onclick="triggerPulse()">
+        <span>⚡ Trigger Pulse</span>
+      </button>
+      <div class="countdown" id="countdown"></div>
+    </div>
+
+  </aside>
+
+  <!-- ── Right: events log ── -->
+  <section class="events-panel card">
+    <div class="events-header">
+      <div class="card-title" style="margin-bottom:0">Event Log</div>
+      <a class="btn-dl" id="btn-dl" href="#">⬇ Download CSV</a>
+    </div>
+    <div class="events-table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Timestamp</th>
+            <th>Event</th>
+            <th>State</th>
+            <th>Source</th>
+            <th>Details</th>
+          </tr>
+        </thead>
+        <tbody id="events-body">
+          <tr><td colspan="5" style="color:var(--text-dim);text-align:center;padding:2rem">Loading…</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+</main>
+
+<footer>
+  <span>Relay Control Dashboard · BCM GPIO 17</span>
+  <span id="clock"></span>
+</footer>
+
+<div id="toast"></div>
+
+<script>
+  // ── Credentials (injected server-side; never expose in production like this) ──
+  const CREDS = btoa('{{ username }}:{{ password }}');
+  const HEADERS = { 'Authorization': 'Basic ' + CREDS };
+  const DEACTIVATE_SECS = {{ deactivate_secs }};
+
+  let pulseActive  = false;
+  let countdownInt = null;
+
+  // ── Clock ──────────────────────────────────────────────────
+  function clock() {
+    document.getElementById('clock').textContent =
+      new Date().toUTCString().replace('GMT','UTC');
+  }
+  clock();
+  setInterval(clock, 1000);
+
+  // ── Toast ──────────────────────────────────────────────────
+  function showToast(msg, type = 'ok') {
+    const t = document.getElementById('toast');
+    t.textContent = msg;
+    t.className = 'show ' + type;
+    clearTimeout(t._tid);
+    t._tid = setTimeout(() => { t.className = ''; }, 3800);
+  }
+
+  // ── Update UI state ────────────────────────────────────────
+  function applyState(state, pActive) {
+    const orb   = document.getElementById('orb');
+    const label = document.getElementById('orb-label');
+    const sub   = document.getElementById('orb-sub');
+
+    if (pActive) {
+      orb.className   = 'orb pulse';
+      label.className = 'orb-label pulse';
+      label.textContent = 'PULSE';
+      sub.textContent   = `Relay cycling — returns ON in ${DEACTIVATE_SECS}s`;
+    } else if (state === 'ON') {
+      orb.className   = 'orb on';
+      label.className = 'orb-label on';
+      label.textContent = 'ACTIVE';
+      sub.textContent   = 'Relay energised — circuit closed';
+    } else {
+      orb.className   = 'orb off';
+      label.className = 'orb-label off';
+      label.textContent = 'INACTIVE';
+      sub.textContent   = 'Relay de-energised — circuit open';
+    }
+
+    const btn = document.getElementById('btn-trigger');
+    btn.disabled = pActive;
+  }
+
+  // ── Fetch status ───────────────────────────────────────────
+  async function fetchStatus() {
+    try {
+      const r = await fetch('/api/status', { headers: HEADERS });
+      if (!r.ok) return;
+      const d = await r.json();
+      applyState(d.relay_state, d.pulse_active);
+      document.getElementById('on-pi').textContent = d.pulse_active ? 'Yes' : (d.on_pi ?? '…');
+      pulseActive = d.pulse_active;
+    } catch {}
+  }
+
+  // ── Fetch health ───────────────────────────────────────────
+  async function fetchHealth() {
+    try {
+      const r = await fetch('/api/health');
+      const d = await r.json();
+      const badge = document.getElementById('health-badge');
+      if (d.status === 'ok') {
+        badge.textContent = '● online';
+        badge.style.color = 'var(--accent)';
+        document.getElementById('on-pi').textContent = d.on_pi ? 'Yes' : 'No (stub)';
+      } else {
+        badge.textContent = '● degraded';
+        badge.style.color = 'var(--warn)';
+      }
+    } catch {
+      const badge = document.getElementById('health-badge');
+      badge.textContent = '● offline';
+      badge.style.color = 'var(--warn)';
+    }
+  }
+
+  // ── Fetch events ───────────────────────────────────────────
+  async function fetchEvents() {
+    try {
+      const r = await fetch('/api/events?limit=50', { headers: HEADERS });
+      if (!r.ok) return;
+      const d = await r.json();
+      renderEvents(d.events);
+    } catch {}
+  }
+
+  function renderEvents(events) {
+    const tbody = document.getElementById('events-body');
+    if (!events.length) {
+      tbody.innerHTML = '<tr><td colspan="5" style="color:var(--text-dim);text-align:center;padding:2rem">No events yet</td></tr>';
+      return;
+    }
+    tbody.innerHTML = events.map(e => {
+      const ts = new Date(e.timestamp);
+      const tsStr = ts.toLocaleString('sv-SE', { hour12: false }).replace('T', ' ');
+      const stateBadge = e.state === 'ON'
+        ? '<span class="badge badge-on">ON</span>'
+        : '<span class="badge badge-off">OFF</span>';
+      const eventBadge = `<span class="badge badge-event">${e.event}</span>`;
+      return `<tr>
+        <td class="ts">${tsStr}</td>
+        <td>${eventBadge}</td>
+        <td>${stateBadge}</td>
+        <td>${e.source ?? '—'}</td>
+        <td style="color:var(--text-dim)">${e.details ?? ''}</td>
+      </tr>`;
+    }).join('');
+  }
+
+  // ── Trigger pulse ──────────────────────────────────────────
+  async function triggerPulse() {
+    const btn = document.getElementById('btn-trigger');
+    btn.disabled = true;
+    try {
+      const r = await fetch('/api/trigger', { method: 'POST', headers: HEADERS });
+      const d = await r.json();
+      if (d.ok) {
+        showToast('Pulse triggered — relay cycling', 'ok');
+        startCountdown();
+        applyState('OFF', true);
+      } else {
+        showToast(d.message, 'err');
+        btn.disabled = false;
+      }
+    } catch (err) {
+      showToast('Request failed: ' + err.message, 'err');
+      btn.disabled = false;
+    }
+  }
+
+  // ── Countdown display ──────────────────────────────────────
+  function startCountdown() {
+    clearInterval(countdownInt);
+    let secs = DEACTIVATE_SECS;
+    const el = document.getElementById('countdown');
+    el.textContent = `Relay OFF — reactivating in ${secs}s`;
+    countdownInt = setInterval(() => {
+      secs--;
+      if (secs <= 0) {
+        clearInterval(countdownInt);
+        el.textContent = 'Relay reactivated ✓';
+        setTimeout(() => { el.textContent = ''; }, 2000);
+        fetchStatus();
+        fetchEvents();
+      } else {
+        el.textContent = `Relay OFF — reactivating in ${secs}s`;
+      }
+    }, 1000);
+  }
+
+  // ── Download link ──────────────────────────────────────────
+  document.getElementById('btn-dl').href = '/api/events/download';
+  document.getElementById('btn-dl').addEventListener('click', function(e) {
+    // inject auth via fetch then trigger download
+    e.preventDefault();
+    fetch('/api/events/download', { headers: HEADERS })
+      .then(r => r.blob())
+      .then(blob => {
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `relay_events_${Date.now()}.csv`;
+        a.click();
+        URL.revokeObjectURL(url);
+      }).catch(() => showToast('Download failed', 'err'));
+  });
+
+  // ── Polling ────────────────────────────────────────────────
+  fetchHealth();
+  fetchStatus();
+  fetchEvents();
+  setInterval(fetchHealth,  30000);
+  setInterval(fetchStatus,  3000);
+  setInterval(fetchEvents,  5000);
+</script>
+</body>
+</html>

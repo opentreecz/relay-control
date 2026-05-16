@@ -1,0 +1,4 @@
+flask>=3.0.0
+# RPi.GPIO is only needed on actual Raspberry Pi hardware.
+# Uncomment the line below when deploying on the Pi:
+# RPi.GPIO>=0.7.1

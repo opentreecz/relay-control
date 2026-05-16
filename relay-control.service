@@ -1,0 +1,41 @@
+[Unit]
+Description=Relay Control — GPIO relay API and web dashboard
+Documentation=https://github.com/your-org/relay-control
+After=network.target
+Wants=network.target
+
+[Service]
+# ── Security hardening ──────────────────────────────────────
+Type=simple
+User=pi
+Group=pi
+
+# ── Working directory & entry point ────────────────────────
+WorkingDirectory=/opt/relay-control
+ExecStart=/opt/relay-control/venv/bin/python app.py
+
+# ── Environment (override sensitive values in the drop-in) ─
+EnvironmentFile=-/etc/relay-control/env
+Environment=RELAY_PIN=17
+Environment=HOST=0.0.0.0
+Environment=PORT=5000
+Environment=DEACTIVATE_SECS=10
+Environment=LOG_DIR=/var/log/relay-control
+
+# ── Restart policy ─────────────────────────────────────────
+Restart=on-failure
+RestartSec=5
+StartLimitIntervalSec=60
+StartLimitBurst=5
+
+# ── Resource limits ────────────────────────────────────────
+TimeoutStartSec=30
+TimeoutStopSec=10
+
+# ── Logging ────────────────────────────────────────────────
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=relay-control
+
+[Install]
+WantedBy=multi-user.target
